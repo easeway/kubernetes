@@ -325,7 +325,11 @@ func (e *Store) ListPredicate(ctx context.Context, p storage.SelectionPredicate,
 		// if we cannot extract a key based on the current context, the optimization is skipped
 	}
 
-	err := e.Storage.List(ctx, e.KeyRootFunc(ctx), options.ResourceVersion, p, list)
+	key := e.KeyRootFunc(ctx)
+	if options.Recursive && !strings.HasSuffix(key, ".") && !strings.HasSuffix(key, "/") {
+		key += "."
+	}
+	err := e.Storage.List(ctx, key, options.ResourceVersion, p, list)
 	return list, storeerr.InterpretListError(err, qualifiedResource)
 }
 

@@ -663,6 +663,28 @@ func RequireNamespace(namespace string) VisitorFunc {
 	}
 }
 
+// RequireNamespaceRecursive is similar to RequireNamespace, but allows child namespaces.
+func RequireNamespaceRecursive(namespace string) VisitorFunc {
+	return func(info *Info, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.Namespaced() {
+			return nil
+		}
+		if len(info.Namespace) == 0 {
+			info.Namespace = namespace
+			UpdateObjectNamespace(info, nil)
+			return nil
+		}
+		if info.Namespace != namespace && !((strings.HasSuffix(namespace, ".") && strings.HasPrefix(info.Namespace, namespace)) ||
+			(!strings.HasSuffix(namespace, ".") && strings.HasPrefix(info.Namespace, namespace+"."))) {
+			return fmt.Errorf("the namespace from the provided object %q does not match the namespace %q. You must pass '--namespace=%s' to perform this operation.", info.Namespace, namespace, info.Namespace)
+		}
+		return nil
+	}
+}
+
 // RetrieveLatest updates the Object on each Info by invoking a standard client
 // Get.
 func RetrieveLatest(info *Info, err error) error {

@@ -59,7 +59,7 @@ func NameIsDNS1035Label(name string, prefix bool) []string {
 // ValidateNamespaceName can be used to check whether the given namespace name is valid.
 // Prefix indicates this name will be used as part of generation, in which case
 // trailing dashes are allowed.
-var ValidateNamespaceName = NameIsDNSLabel
+var ValidateNamespaceName = NameIsDNSSubdomain
 
 // ValidateServiceAccountName can be used to check whether the given service account name is valid.
 // Prefix indicates this name will be used as part of generation, in which case

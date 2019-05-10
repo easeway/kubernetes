@@ -62,6 +62,10 @@ type ListOptions struct {
 	// it does not recognize and will return a 410 error if the token can no longer be used because
 	// it has expired.
 	Continue string
+	// Recursive option can be specified when listing resources in hierarchical namespaces.
+	// This option is simply ignored if hierarchical namespace is not enabled, or the result is identical
+	// to non-recursive list if there's no child namespaces.
+	Recursive bool
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -408,6 +408,11 @@ type ListOptions struct {
 	// This field is not supported when watch is true. Clients may start a watch from the last
 	// resourceVersion value returned by the server and not miss any modifications.
 	Continue string `json:"continue,omitempty" protobuf:"bytes,8,opt,name=continue"`
+	// Recursive option can be specified when listing resources in hierarchical namespaces.
+	// This option is simply ignored if hierarchical namespace is not enabled, or the result is identical
+	// to non-recursive list if there's no child namespaces.
+	// +optional
+	Recursive bool `json:"recursive,omitempty" protobuf:"varint,10,opt,name=recursive"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

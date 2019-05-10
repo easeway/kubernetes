@@ -289,8 +289,8 @@ func validateContext(contextName string, context clientcmdapi.Context, config cl
 	}
 
 	if len(context.Namespace) != 0 {
-		if len(validation.IsDNS1123Label(context.Namespace)) != 0 {
-			validationErrors = append(validationErrors, fmt.Errorf("namespace %q for context %q does not conform to the kubernetes DNS_LABEL rules", context.Namespace, contextName))
+		if len(validation.IsDNS1123Subdomain(context.Namespace)) != 0 {
+			validationErrors = append(validationErrors, fmt.Errorf("namespace %q for context %q does not conform to the kubernetes DNS_SUBDOMAIN rules", context.Namespace, contextName))
 		}
 	}
 

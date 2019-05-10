@@ -34,10 +34,11 @@ type Selector struct {
 	FieldSelector string
 	Export        bool
 	LimitChunks   int64
+	Recursive     bool
 }
 
 // NewSelector creates a resource selector which hides details of getting items by their label selector.
-func NewSelector(client RESTClient, mapping *meta.RESTMapping, namespace, labelSelector, fieldSelector string, export bool, limitChunks int64) *Selector {
+func NewSelector(client RESTClient, mapping *meta.RESTMapping, namespace, labelSelector, fieldSelector string, export bool, limitChunks int64, recursive bool) *Selector {
 	return &Selector{
 		Client:        client,
 		Mapping:       mapping,
@@ -46,6 +47,7 @@ func NewSelector(client RESTClient, mapping *meta.RESTMapping, namespace, labelS
 		FieldSelector: fieldSelector,
 		Export:        export,
 		LimitChunks:   limitChunks,
+		Recursive:     recursive,
 	}
 }
 
@@ -61,6 +63,7 @@ func (r *Selector) Visit(fn VisitorFunc) error {
 				LabelSelector: r.LabelSelector,
 				FieldSelector: r.FieldSelector,
 				Limit:         r.LimitChunks,
+				Recursive:     r.Recursive,
 				Continue:      continueToken,
 			},
 		)

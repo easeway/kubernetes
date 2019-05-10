@@ -81,9 +81,10 @@ type Builder struct {
 
 	resources []string
 
-	namespace    string
-	allNamespace bool
-	names        []string
+	namespace     string
+	allNamespace  bool
+	subNamespaces bool
+	names         []string
 
 	resourceTuples []resourceTuple
 
@@ -491,6 +492,13 @@ func (b *Builder) AllNamespaces(allNamespace bool) *Builder {
 	return b
 }
 
+// SubNamespaces instructs the builder to set metav1.Recursive to request resources
+// across all child namespaces.
+func (b *Builder) SubNamespaces(subNamespaces bool) *Builder {
+	b.subNamespaces = subNamespaces
+	return b
+}
+
 // RequireNamespace instructs the builder to set the namespace value for any object found
 // to NamespaceParam() if empty, and if the value on the resource does not match
 // NamespaceParam() an error will be returned.
@@ -864,7 +872,7 @@ func (b *Builder) visitBySelector() *Result {
 		if mapping.Scope.Name() != meta.RESTScopeNameNamespace {
 			selectorNamespace = ""
 		}
-		visitors = append(visitors, NewSelector(client, mapping, selectorNamespace, labelSelector, fieldSelector, b.export, b.limitChunks))
+		visitors = append(visitors, NewSelector(client, mapping, selectorNamespace, labelSelector, fieldSelector, b.export, b.limitChunks, b.subNamespaces))
 	}
 	if b.continueOnError {
 		result.visitor = EagerVisitorList(visitors)
@@ -1103,7 +1111,11 @@ func (b *Builder) Do() *Result {
 		helpers = append(helpers, SetNamespace(b.namespace))
 	}
 	if b.requireNamespace {
-		helpers = append(helpers, RequireNamespace(b.namespace))
+		if b.subNamespaces {
+			helpers = append(helpers, RequireNamespaceRecursive(b.namespace))
+		} else {
+			helpers = append(helpers, RequireNamespace(b.namespace))
+		}
 	}
 	helpers = append(helpers, FilterNamespace)
 	if b.requireObject {

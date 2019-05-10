@@ -461,14 +461,20 @@ func decodeContinue(continueValue, keyPrefix string) (fromKey string, rv int64, 
 		// continue start key that is fully qualified and cannot range over anything less specific than
 		// keyPrefix.
 		key := c.StartKey
-		if !strings.HasPrefix(key, "/") {
+		withChildNSName := strings.HasPrefix(key, ".")
+		if withChildNSName {
+			key = "/" + key[1:]
+		} else if !strings.HasPrefix(key, "/") {
 			key = "/" + key
 		}
 		cleaned := path.Clean(key)
 		if cleaned != key {
 			return "", 0, fmt.Errorf("continue key is not valid: %s", c.StartKey)
 		}
-		return keyPrefix + cleaned[1:], c.ResourceVersion, nil
+		if withChildNSName {
+			cleaned = "." + cleaned[1:]
+		}
+		return keyPrefix + cleaned, c.ResourceVersion, nil
 	default:
 		return "", 0, fmt.Errorf("continue key is not valid: server does not recognize this encoded version %q", c.APIVersion)
 	}
@@ -478,6 +484,12 @@ func decodeContinue(continueValue, keyPrefix string) (fromKey string, rv int64, 
 func encodeContinue(key, keyPrefix string, resourceVersion int64) (string, error) {
 	nextKey := strings.TrimPrefix(key, keyPrefix)
 	if nextKey == key {
+		return "", fmt.Errorf("unable to encode next field: the key and key prefix do not match")
+	}
+	// keep "." as prefix, but remove "/". Use this to indicate if key contains child namespace names.
+	if strings.HasPrefix(nextKey, "/") {
+		nextKey = nextKey[1:]
+	} else if !strings.HasPrefix(nextKey, ".") {
 		return "", fmt.Errorf("unable to encode next field: the key and key prefix do not match")
 	}
 	out, err := json.Marshal(&continueToken{APIVersion: "meta.k8s.io/v1", ResourceVersion: resourceVersion, StartKey: nextKey})
@@ -503,13 +515,20 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 	if s.pathPrefix != "" {
 		key = path.Join(s.pathPrefix, key)
 	}
+
+	// If key ends with ".", list recursively in child namespaces.
+	// As "/" is exactly the next character after "." according to ASCII code, the actual range
+	// for recursive list is ["prefix/namespace.", prefixRangeEnd("prefix/namespace/"))
 	// We need to make sure the key ended with "/" so that we only get children "directories".
 	// e.g. if we have key "/a", "/a/b", "/ab", getting keys with prefix "/a" will return all three,
 	// while with prefix "/a/" will return only "/a/b" which is the correct answer.
-	if !strings.HasSuffix(key, "/") {
+	keyPrefix := key
+	if strings.HasSuffix(keyPrefix, "/") || strings.HasSuffix(keyPrefix, ".") {
+		keyPrefix = keyPrefix[:len(keyPrefix)-1]
+	} else {
 		key += "/"
 	}
-	keyPrefix := key
+	endKeyPrefix := keyPrefix + "/"
 
 	// set the appropriate clientv3 options to filter the returned data set
 	var paging bool
@@ -532,7 +551,7 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 			return apierrors.NewBadRequest("specifying resource version is not allowed when using continue")
 		}
 
-		rangeEnd := clientv3.GetPrefixRangeEnd(keyPrefix)
+		rangeEnd := clientv3.GetPrefixRangeEnd(endKeyPrefix)
 		options = append(options, clientv3.WithRange(rangeEnd))
 		key = continueKey
 
@@ -555,7 +574,7 @@ func (s *store) List(ctx context.Context, key, resourceVersion string, pred stor
 			returnedRV = int64(fromRV)
 		}
 
-		rangeEnd := clientv3.GetPrefixRangeEnd(keyPrefix)
+		rangeEnd := clientv3.GetPrefixRangeEnd(endKeyPrefix)
 		options = append(options, clientv3.WithRange(rangeEnd))
 
 	default:

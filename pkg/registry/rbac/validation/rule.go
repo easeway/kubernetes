@@ -204,7 +204,7 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 		}
 	}
 
-	if len(namespace) > 0 {
+	for len(namespace) > 0 {
 		if roleBindings, err := r.roleBindingLister.ListRoleBindings(namespace); err != nil {
 			if !visitor(nil, nil, err) {
 				return
@@ -231,6 +231,11 @@ func (r *DefaultRuleResolver) VisitRulesFor(user user.Info, namespace string, vi
 					}
 				}
 			}
+		}
+		if pos := strings.LastIndex(namespace, "."); pos > 0 {
+			namespace = namespace[:pos]
+		} else {
+			break
 		}
 	}
 }
